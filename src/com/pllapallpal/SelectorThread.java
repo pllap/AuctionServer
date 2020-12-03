@@ -53,12 +53,13 @@ public class SelectorThread implements Runnable {
                                 UserInfoMap.getInstance().getUserMap().get(clientSocketChannel).setUsername(username);
 
                                 // send LIST protocol
+                                // protocol - numUser - userList
                                 ByteBuffer writeByteBuffer = ByteBuffer.allocate(1024);
                                 writeByteBuffer.putInt(102);
                                 writeByteBuffer.putInt(UserInfoMap.getInstance().getUserMap().size());
                                 Iterator<Map.Entry<SocketChannel, UserInfo>> iterator = UserInfoMap.getInstance().getUserMap().entrySet().iterator();
                                 while (iterator.hasNext()) {
-                                    String listItem = iterator.next().getValue().getUsername() + "\t";
+                                    String listItem = iterator.next().getValue().getUsername() + ">>>";
                                     writeByteBuffer.put(listItem.getBytes());
                                 }
                                 writeByteBuffer.flip();
@@ -84,14 +85,12 @@ public class SelectorThread implements Runnable {
      * @return ByteBuffer which is read from socketChannel
      */
     private ByteBuffer readFrom(SocketChannel socketChannel) {
-        System.out.println("readFrom");
         ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
         try {
-            System.out.println("read 전");
-            int numRead = socketChannel.read(byteBuffer);
-            System.out.println("numRead: " + numRead);
+            socketChannel.read(byteBuffer);
         } catch (IOException e) {
             try {
+                // Handle client who terminated connection
                 System.out.println("Client " + UserInfoMap.getInstance().getUserMap().get(socketChannel).getUsername() + " has left the server.");
                 socketChannel.close();
                 socketChannelList.remove(socketChannel);

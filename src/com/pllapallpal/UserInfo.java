@@ -1,7 +1,5 @@
 package com.pllapallpal;
 
-import java.nio.channels.SocketChannel;
-
 public class UserInfo {
 
     private String username;
