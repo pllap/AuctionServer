@@ -36,7 +36,7 @@ public class SelectorThread implements Runnable {
                         if (Objects.isNull(socketChannel)) {
                             return;
                         }
-
+q
                         socketChannel.configureBlocking(false);
                         socketChannel.register(selector, SelectionKey.OP_READ);
                         socketChannelList.add(socketChannel);
@@ -51,24 +51,15 @@ public class SelectorThread implements Runnable {
                                 String username = decoder.decode(receivedByteBuffer).toString();
                                 System.out.println(username); // DEBUG
                                 UserInfoMap.getInstance().getUserMap().get(clientSocketChannel).setUsername(username);
-
-                                // send LIST protocol
-                                // protocol - numUser - userList
-                                ByteBuffer writeByteBuffer = ByteBuffer.allocate(1024);
-                                writeByteBuffer.putInt(102);
-                                writeByteBuffer.putInt(UserInfoMap.getInstance().getUserMap().size());
-                                Iterator<Map.Entry<SocketChannel, UserInfo>> iterator = UserInfoMap.getInstance().getUserMap().entrySet().iterator();
-                                while (iterator.hasNext()) {
-                                    String listItem = iterator.next().getValue().getUsername() + ">>>";
-                                    writeByteBuffer.put(listItem.getBytes());
-                                }
-                                writeByteBuffer.flip();
+                                // Intentionally not put break statement
+                            }
+                            // LOGOUT
+                            case 101: {
+                                ByteBuffer writeByteBuffer = makeUserList();
                                 broadcast(writeByteBuffer);
                                 break;
                             }
-                            case 101: {
-                                break;
-                            }
+                            // LISt
                             case 102: {
                                 break;
                             }
@@ -103,6 +94,21 @@ public class SelectorThread implements Runnable {
             }
         }
 
+        byteBuffer.flip();
+        return byteBuffer;
+    }
+
+    private ByteBuffer makeUserList() {
+        // Put userList information into bytebuffer
+        // Structure: Protocol - List Size - List Data
+        ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+        byteBuffer.putInt(102);
+        byteBuffer.putInt(UserInfoMap.getInstance().getUserMap().size());
+        Iterator<Map.Entry<SocketChannel, UserInfo>> iterator = UserInfoMap.getInstance().getUserMap().entrySet().iterator();
+        while (iterator.hasNext()) {
+            String listItem = iterator.next().getValue().getUsername() + ">>>";
+            byteBuffer.put(listItem.getBytes());
+        }
         byteBuffer.flip();
         return byteBuffer;
     }
