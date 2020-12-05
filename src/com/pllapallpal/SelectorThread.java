@@ -63,7 +63,7 @@ public class SelectorThread implements Runnable {
                                     writeByteBuffer.put(listItem.getBytes());
                                 }
                                 writeByteBuffer.flip();
-                                write(clientSocketChannel, writeByteBuffer);
+                                broadcast(writeByteBuffer);
                                 break;
                             }
                             case 101: {
