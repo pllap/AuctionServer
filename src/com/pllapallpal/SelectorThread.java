@@ -36,7 +36,7 @@ public class SelectorThread implements Runnable {
                         if (Objects.isNull(socketChannel)) {
                             return;
                         }
-q
+
                         socketChannel.configureBlocking(false);
                         socketChannel.register(selector, SelectionKey.OP_READ);
                         socketChannelList.add(socketChannel);
@@ -59,7 +59,7 @@ q
                                 broadcast(writeByteBuffer);
                                 break;
                             }
-                            // LISt
+                            // LIST
                             case 102: {
                                 break;
                             }
