@@ -1,5 +1,7 @@
 package com.pllapallpal;
 
+import javax.imageio.ImageIO;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -42,19 +44,36 @@ public class SelectorThread implements Runnable {
                         socketChannelList.add(socketChannel);
                         UserInfoMap.getInstance().getUserMap().put(socketChannel, new UserInfo());
                     } else if (selectionKey.isReadable()) {
+
                         SocketChannel clientSocketChannel = (SocketChannel) selectionKey.channel();
-                        ByteBuffer receivedByteBuffer = readFrom(clientSocketChannel);
+                        ByteBuffer receivedByteBuffer = read(selectionKey);
+                        Map<SocketChannel, UserInfo> userMap = UserInfoMap.getInstance().getUserMap();
                         int protocol = receivedByteBuffer.getInt();
                         switch (protocol) {
                             case Protocol.LOGIN: {
                                 String username = decoder.decode(receivedByteBuffer).toString();
-                                System.out.println(username); // DEBUG
-                                UserInfoMap.getInstance().getUserMap().get(clientSocketChannel).setUsername(username);
-                                // Intentionally not put break statement
+                                userMap.get(clientSocketChannel).setUsername(username);
+                                System.out.println("Client " + username + " has connected.");
+
+                                ByteBuffer[] userListBuffers = makeUserList();
+                                ByteBuffer userListCapacityBuffer = userListBuffers[0];
+                                ByteBuffer userListBuffer = userListBuffers[1];
+                                broadcast(userListCapacityBuffer);
+                                broadcast(userListBuffer);
+
+                                ByteBuffer[] auctionListBuffers = makeAuctionList();
+                                ByteBuffer auctionListCapacityBuffer = userListBuffers[0];
+                                ByteBuffer auctionListBuffer = userListBuffers[1];
+                                write(clientSocketChannel, auctionListCapacityBuffer);
+                                write(clientSocketChannel, auctionListBuffer);
+                                break;
                             }
                             case Protocol.LOGOUT: {
-                                ByteBuffer writeByteBuffer = makeUserList();
-                                broadcast(writeByteBuffer);
+                                ByteBuffer[] userListBuffers = makeUserList();
+                                ByteBuffer capacityBuffer = userListBuffers[0];
+                                ByteBuffer userListBuffer = userListBuffers[1];
+                                broadcast(capacityBuffer);
+                                broadcast(userListBuffer);
                                 break;
                             }
                             case Protocol.LIST_AUCTION: {
@@ -75,10 +94,24 @@ public class SelectorThread implements Runnable {
     /**
      * @return ByteBuffer which is read from socketChannel
      */
-    private ByteBuffer readFrom(SocketChannel socketChannel) {
-        ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    private ByteBuffer read(SelectionKey selectionKey) {
+        SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
+        ByteBuffer capacityBuffer = ByteBuffer.allocate(Integer.BYTES);
+        ByteBuffer byteBuffer = null;
         try {
-            socketChannel.read(byteBuffer);
+            socketChannel.read(capacityBuffer);
+            capacityBuffer.flip();
+            int capacity = capacityBuffer.getInt();
+
+            byteBuffer = ByteBuffer.allocate(capacity);
+            while (byteBuffer.hasRemaining()) {
+                synchronized (socketChannel) {
+                    if (socketChannel.isConnected()) {
+                        socketChannel.read(byteBuffer);
+                    }
+                }
+            }
+            byteBuffer.flip();
         } catch (IOException e) {
             try {
                 // Handle client who terminated connection
@@ -86,31 +119,97 @@ public class SelectorThread implements Runnable {
                 socketChannel.close();
                 socketChannelList.remove(socketChannel);
                 UserInfoMap.getInstance().getUserMap().remove(socketChannel);
-                byteBuffer.putInt(Protocol.LOGOUT);
-                byteBuffer.flip();
-                return byteBuffer;
+                ByteBuffer logoutBuffer = ByteBuffer.allocate(Integer.BYTES);
+                logoutBuffer.putInt(Protocol.LOGOUT);
+                logoutBuffer.flip();
+                return logoutBuffer;
             } catch (IOException ex) {
                 e.printStackTrace();
             }
         }
 
-        byteBuffer.flip();
         return byteBuffer;
     }
 
-    private ByteBuffer makeUserList() {
+    private ByteBuffer[] makeUserList() {
+
+        // capacityBuffer, byteBuffer
+        ByteBuffer[] byteBuffers = new ByteBuffer[2];
+
         // Put userList information into bytebuffer
-        // Structure: Protocol - List Size - List Data
-        ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-        byteBuffer.putInt(Protocol.LIST_USER);
-        byteBuffer.putInt(UserInfoMap.getInstance().getUserMap().size());
-        Iterator<Map.Entry<SocketChannel, UserInfo>> iterator = UserInfoMap.getInstance().getUserMap().entrySet().iterator();
-        while (iterator.hasNext()) {
-            String listItem = iterator.next().getValue().getUsername() + ">>>";
-            byteBuffer.put(listItem.getBytes());
+        // Structure: ByteBuffer capacity - Protocol - List Size - List Data(String Bytes Length - String Bytes - ...)
+        Map<SocketChannel, UserInfo> userMap = UserInfoMap.getInstance().getUserMap();
+        int capacity = Integer.BYTES + Integer.BYTES; // protocol bytes length + list size bytes length
+        for (Map.Entry<SocketChannel, UserInfo> socketChannelUserInfoEntry : userMap.entrySet()) {
+            int nameBytesLength = socketChannelUserInfoEntry.getValue().getUsername().getBytes().length;
+            capacity = capacity + Integer.BYTES + nameBytesLength; // name length + name bytes data
         }
-        byteBuffer.flip();
-        return byteBuffer;
+        byteBuffers[0] = ByteBuffer.allocate(Integer.BYTES);
+        byteBuffers[0].putInt(capacity);
+        byteBuffers[0].flip();
+
+        byteBuffers[1] = ByteBuffer.allocate(capacity);
+        byteBuffers[1].putInt(Protocol.LIST_USER);
+        byteBuffers[1].putInt(userMap.size());
+        for (Map.Entry<SocketChannel, UserInfo> socketChannelUserInfoEntry : userMap.entrySet()) {
+            byte[] listItem = socketChannelUserInfoEntry.getValue().getUsername().getBytes();
+            byteBuffers[1].putInt(listItem.length);
+            byteBuffers[1].put(listItem);
+        }
+        byteBuffers[1].flip();
+        return byteBuffers;
+    }
+
+    private ByteBuffer[] makeAuctionList() {
+
+        // capacityBuffer, byteBuffer
+        ByteBuffer[] byteBuffers = new ByteBuffer[2];
+
+        // Structure: Protocol - List Size - Byte Image Length - Byte Image - Byte Name Length - Byte Name - Byte Image Length - Byte Image - Byte Name Length - Byte Name - ...
+        List<Auction> auctionList = AuctionList.getInstance().getAuctionList();
+
+        int capacity = Integer.BYTES + Integer.BYTES; // protocol bytes length + auction list length bytes length
+        try {
+            for (Auction auction : auctionList) {
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                ImageIO.write(auction.getItemImage(), "png", byteArrayOutputStream);
+                byteArrayOutputStream.flush();
+                byte[] itemImageBytes = byteArrayOutputStream.toByteArray();
+                byteArrayOutputStream.close();
+                capacity = capacity + Integer.BYTES + itemImageBytes.length; // image length + image bytes data
+
+                byte[] itemNameBytes = auction.getItemName().getBytes();
+                capacity = capacity + Integer.BYTES + itemNameBytes.length; // item name length + item name data
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        byteBuffers[0] = ByteBuffer.allocate(Integer.BYTES);
+        byteBuffers[0].putInt(capacity);
+        byteBuffers[0].flip();
+
+        byteBuffers[1] = ByteBuffer.allocate(capacity);
+        byteBuffers[1].putInt(Protocol.LIST_AUCTION);
+        byteBuffers[1].putInt(auctionList.size());
+        try {
+            for (Auction auction : auctionList) {
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                ImageIO.write(auction.getItemImage(), "png", byteArrayOutputStream);
+                byteArrayOutputStream.flush();
+                byte[] byteImage = byteArrayOutputStream.toByteArray();
+                byteBuffers[1].putInt(byteImage.length);
+                byteBuffers[1].put(byteImage);
+                byteArrayOutputStream.close();
+                byteBuffers[1].putInt(auction.getItemName().getBytes().length);
+                byteBuffers[1].put(auction.getItemName().getBytes());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        byteBuffers[1].flip();
+
+        return byteBuffers;
     }
 
     /**
@@ -119,8 +218,7 @@ public class SelectorThread implements Runnable {
     private void broadcast(ByteBuffer byteBuffer) {
         for (SocketChannel socketChannelBroadcast : socketChannelList) {
             try {
-                write(socketChannelBroadcast, byteBuffer);
-                System.out.println("Broadcast " + decoder.decode(byteBuffer));
+                socketChannelBroadcast.write(byteBuffer);
             } catch (IOException e) {
                 try {
                     socketChannelBroadcast.close();
