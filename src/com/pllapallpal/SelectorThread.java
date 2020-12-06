@@ -1,6 +1,8 @@
 package com.pllapallpal;
 
 import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -8,6 +10,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -80,6 +83,13 @@ public class SelectorThread implements Runnable {
                                 break;
                             }
                             case Protocol.LIST_USER: {
+                                break;
+                            }
+                            case Protocol.NEW_AUCTION: {
+                                Auction newAuction = makeNewAuction(receivedByteBuffer);
+                                System.out.println("DEBUG");
+                                System.out.println("Creator: " + newAuction.getCreatorName());
+                                System.out.println("ItemName: " + newAuction.getItemName());
                                 break;
                             }
                         }
@@ -210,6 +220,46 @@ public class SelectorThread implements Runnable {
         byteBuffers[1].flip();
 
         return byteBuffers;
+    }
+
+    private Auction makeNewAuction(ByteBuffer byteBuffer) {
+
+        Auction newAuction;
+        String username;
+        BufferedImage itemImage;
+        String itemName;
+        int startingPrice;
+
+        try {
+            int usernameBytesLength = byteBuffer.getInt();
+            byte[] usernameBytes = new byte[usernameBytesLength];
+            byteBuffer.get(usernameBytes, byteBuffer.arrayOffset(), usernameBytesLength);
+            username = decoder.decode(ByteBuffer.wrap(usernameBytes)).toString();
+
+            int itemImageBytesLength = byteBuffer.getInt();
+            byte[] itemImageBytes = new byte[itemImageBytesLength];
+            byteBuffer.get(itemImageBytes, byteBuffer.arrayOffset(), itemImageBytesLength);
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(itemImageBytes);
+            itemImage = ImageIO.read(byteArrayInputStream);
+
+            int itemNameBytesLength = byteBuffer.getInt();
+            byte[] itemNameBytes = new byte[itemNameBytesLength];
+            byteBuffer.get(itemNameBytes, byteBuffer.arrayOffset(), itemNameBytesLength);
+            itemName = decoder.decode(ByteBuffer.wrap(itemNameBytes)).toString();
+
+            startingPrice = byteBuffer.getInt();
+
+            newAuction = new Auction();
+            newAuction.setCreatorName(username);
+            newAuction.setItemImage(itemImage);
+            newAuction.setItemName(itemName);
+            newAuction.setStartingPrice(startingPrice);
+        } catch (IOException e) {
+            e.printStackTrace();
+            newAuction = null;
+        }
+
+        return newAuction;
     }
 
     /**
