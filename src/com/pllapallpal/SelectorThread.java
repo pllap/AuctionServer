@@ -62,8 +62,8 @@ public class SelectorThread implements Runnable {
                                 broadcast(userListBuffer);
 
                                 ByteBuffer[] auctionListBuffers = makeAuctionList();
-                                ByteBuffer auctionListCapacityBuffer = userListBuffers[0];
-                                ByteBuffer auctionListBuffer = userListBuffers[1];
+                                ByteBuffer auctionListCapacityBuffer = auctionListBuffers[0];
+                                ByteBuffer auctionListBuffer = auctionListBuffers[1];
                                 write(clientSocketChannel, auctionListCapacityBuffer);
                                 write(clientSocketChannel, auctionListBuffer);
                                 break;
