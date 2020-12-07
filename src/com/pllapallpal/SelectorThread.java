@@ -187,6 +187,9 @@ public class SelectorThread implements Runnable {
         try {
             for (Auction auction : auctionList) {
 
+                byte[] keyBytes = auction.getKey().getBytes();
+                capacity = capacity + Integer.BYTES + keyBytes.length;
+
                 byte[] creatorNameBytes = auction.getItemName().getBytes();
                 capacity = capacity + Integer.BYTES + creatorNameBytes.length; // creator name length + item name data
 
@@ -215,8 +218,13 @@ public class SelectorThread implements Runnable {
         byteBuffers[1].putInt(auctionList.size());
         try {
             for (Auction auction : auctionList) {
+                // key
+                byteBuffers[1].putInt(auction.getKey().getBytes().length);
+                byteBuffers[1].put(auction.getKey().getBytes());
+                // creatorName
                 byteBuffers[1].putInt(auction.getCreatorName().getBytes().length);
                 byteBuffers[1].put(auction.getCreatorName().getBytes());
+                // itemImage
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 ImageIO.write(auction.getItemImage(), "png", byteArrayOutputStream);
                 byteArrayOutputStream.flush();
@@ -224,8 +232,10 @@ public class SelectorThread implements Runnable {
                 byteBuffers[1].putInt(byteImage.length);
                 byteBuffers[1].put(byteImage);
                 byteArrayOutputStream.close();
+                // itemName
                 byteBuffers[1].putInt(auction.getItemName().getBytes().length);
                 byteBuffers[1].put(auction.getItemName().getBytes());
+                // startingPrice
                 byteBuffers[1].putInt(auction.getStartingPrice());
             }
         } catch (IOException e) {
