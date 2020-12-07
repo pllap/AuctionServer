@@ -10,7 +10,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -64,7 +63,7 @@ public class SelectorThread implements Runnable {
                                 broadcast(userListCapacityBuffer);
                                 broadcast(userListBuffer);
 
-                                ByteBuffer[] auctionListBuffers = makeAuctionList();
+                                ByteBuffer[] auctionListBuffers = auctionListToByteBuffer();
                                 ByteBuffer auctionListCapacityBuffer = auctionListBuffers[0];
                                 ByteBuffer auctionListBuffer = auctionListBuffers[1];
                                 write(clientSocketChannel, auctionListCapacityBuffer);
@@ -86,10 +85,16 @@ public class SelectorThread implements Runnable {
                                 break;
                             }
                             case Protocol.NEW_AUCTION: {
+                                List<Auction> auctionList = AuctionList.getInstance().getAuctionList();
                                 Auction newAuction = makeNewAuction(receivedByteBuffer);
-                                System.out.println("DEBUG");
-                                System.out.println("Creator: " + newAuction.getCreatorName());
-                                System.out.println("ItemName: " + newAuction.getItemName());
+                                auctionList.add(newAuction);
+
+                                ByteBuffer[] auctionListBuffers = auctionListToByteBuffer();
+                                ByteBuffer auctionListCapacityBuffer = auctionListBuffers[0];
+                                ByteBuffer auctionListBuffer = auctionListBuffers[1];
+                                broadcast(auctionListCapacityBuffer);
+                                broadcast(auctionListBuffer);
+
                                 break;
                             }
                         }
@@ -170,7 +175,7 @@ public class SelectorThread implements Runnable {
         return byteBuffers;
     }
 
-    private ByteBuffer[] makeAuctionList() {
+    private ByteBuffer[] auctionListToByteBuffer() {
 
         // capacityBuffer, byteBuffer
         ByteBuffer[] byteBuffers = new ByteBuffer[2];
