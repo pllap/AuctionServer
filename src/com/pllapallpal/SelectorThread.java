@@ -186,6 +186,10 @@ public class SelectorThread implements Runnable {
         int capacity = Integer.BYTES + Integer.BYTES; // protocol bytes length + auction list length bytes length
         try {
             for (Auction auction : auctionList) {
+
+                byte[] creatorNameBytes = auction.getItemName().getBytes();
+                capacity = capacity + Integer.BYTES + creatorNameBytes.length; // creator name length + item name data
+
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 ImageIO.write(auction.getItemImage(), "png", byteArrayOutputStream);
                 byteArrayOutputStream.flush();
@@ -195,6 +199,8 @@ public class SelectorThread implements Runnable {
 
                 byte[] itemNameBytes = auction.getItemName().getBytes();
                 capacity = capacity + Integer.BYTES + itemNameBytes.length; // item name length + item name data
+
+                capacity = capacity + Integer.BYTES; // starting price
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -209,6 +215,8 @@ public class SelectorThread implements Runnable {
         byteBuffers[1].putInt(auctionList.size());
         try {
             for (Auction auction : auctionList) {
+                byteBuffers[1].putInt(auction.getCreatorName().getBytes().length);
+                byteBuffers[1].put(auction.getCreatorName().getBytes());
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 ImageIO.write(auction.getItemImage(), "png", byteArrayOutputStream);
                 byteArrayOutputStream.flush();
@@ -218,6 +226,7 @@ public class SelectorThread implements Runnable {
                 byteArrayOutputStream.close();
                 byteBuffers[1].putInt(auction.getItemName().getBytes().length);
                 byteBuffers[1].put(auction.getItemName().getBytes());
+                byteBuffers[1].putInt(auction.getStartingPrice());
             }
         } catch (IOException e) {
             e.printStackTrace();
