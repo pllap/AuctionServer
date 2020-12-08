@@ -59,6 +59,7 @@ public class Auction {
 //                }
 //
 //                AuctionList.getInstance().getAuctionList().remove(this);
+        // awaitTermination() 쓰라고 함
 //            }
 //        };
 //        ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
@@ -132,5 +133,9 @@ public class Auction {
 
     public boolean contains(SocketChannel userSocketChannel) {
         return userSocketChannelList.contains(userSocketChannel);
+    }
+
+    public List<SocketChannel> getUserSocketChannelList() {
+        return userSocketChannelList;
     }
 }
