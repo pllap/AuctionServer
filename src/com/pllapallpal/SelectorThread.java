@@ -96,7 +96,43 @@ public class SelectorThread implements Runnable {
                                 break;
                             }
                             case Protocol.AUCTION_ENTER: {
-                                System.out.println("AUCTION_ENTER");
+                                List<Auction> auctionList = AuctionList.getInstance().getAuctionList();
+                                int keyBytes = receivedByteBuffer.getInt();
+                                byte[] byteKey = new byte[keyBytes];
+                                receivedByteBuffer.get(byteKey, receivedByteBuffer.arrayOffset(), keyBytes);
+                                String auctionKey = new String(byteKey, StandardCharsets.UTF_8);
+
+                                Auction auction = null;
+                                for (Auction item : auctionList) {
+                                    if (auctionKey.equals(item.getKey())) {
+                                        auction = item;
+                                        break;
+                                    }
+                                }
+
+                                if (Objects.nonNull(auction)) {
+                                    int capacity = Integer.BYTES + Byte.BYTES + // protocol + answer
+                                            Integer.BYTES + auctionKey.getBytes().length;
+                                    ByteBuffer capacityBuffer = ByteBuffer.allocate(Integer.BYTES);
+                                    capacityBuffer.putInt(capacity);
+                                    capacityBuffer.flip();
+
+                                    byte answer = Protocol.TRUE;
+                                    if (auction.contains(userMap.get(clientSocketChannel))) {
+                                        answer = Protocol.FALSE;
+                                    }
+
+                                    ByteBuffer byteBuffer = ByteBuffer.allocate(capacity);
+                                    byteBuffer.putInt(Protocol.AUCTION_ENTER);
+                                    byteBuffer.put(answer);
+                                    byteBuffer.putInt(auctionKey.getBytes().length);
+                                    byteBuffer.put(auctionKey.getBytes());
+
+                                    byteBuffer.flip();
+
+                                    write(clientSocketChannel, capacityBuffer);
+                                    write(clientSocketChannel, byteBuffer);
+                                }
                                 break;
                             }
                         }

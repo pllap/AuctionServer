@@ -5,6 +5,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 public class Auction {
@@ -15,10 +17,13 @@ public class Auction {
     private String itemName;
     private int startingPrice;
 
+    private List<UserInfo> userList;
+
     public Auction() {
         byte[] array = new byte[8];
         new Random().nextBytes(array);
         key = new String(array, StandardCharsets.UTF_8);
+        userList = new ArrayList<>();
     }
 
     public String getCreatorName() {
@@ -80,5 +85,9 @@ public class Auction {
         bytes = bytes + Integer.BYTES; // starting price
 
         return bytes;
+    }
+
+    public boolean contains(UserInfo user) {
+        return userList.contains(user);
     }
 }
