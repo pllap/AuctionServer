@@ -4,10 +4,15 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class Auction {
 
@@ -16,14 +21,48 @@ public class Auction {
     private BufferedImage itemImage;
     private String itemName;
     private int startingPrice;
+    private int leftTime;
 
-    private List<UserInfo> userList;
+    private List<SocketChannel> userSocketChannelList;
 
     public Auction() {
         byte[] array = new byte[8];
         new Random().nextBytes(array);
         key = new String(array, StandardCharsets.UTF_8);
-        userList = new ArrayList<>();
+        userSocketChannelList = new ArrayList<>();
+        leftTime = 30;
+
+        // 타이머 재는 부분
+//        Runnable timer = () -> {
+//            if (leftTime > 0) {
+//                --leftTime;
+//                System.out.println("Left time for " + itemName + ": " + leftTime);
+//            } else {
+//                //TODO: 접속 중인 유저들에게 다이얼로그 띄우고 밖으로 내보낸다
+//                //TODO: 리스트에서 이 옥션을 제거한다
+//                int capacity = Integer.BYTES; // protocol
+//                ByteBuffer capacityBuffer = ByteBuffer.allocate(Integer.BYTES);
+//                capacityBuffer.putInt(capacity);
+//                capacityBuffer.flip();
+//
+//                ByteBuffer byteBuffer = ByteBuffer.allocate(capacity);
+//                byteBuffer.putInt(Protocol.AUCTION_QUIT);
+//                byteBuffer.flip();
+//
+//                try {
+//                    for (SocketChannel socketChannel : userSocketChannelList) {
+//                        socketChannel.write(capacityBuffer);
+//                        socketChannel.write(byteBuffer);
+//                    }
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//
+//                AuctionList.getInstance().getAuctionList().remove(this);
+//            }
+//        };
+//        ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+//        executor.scheduleAtFixedRate(timer, 0, 1, TimeUnit.SECONDS);
     }
 
     public String getCreatorName() {
@@ -87,7 +126,11 @@ public class Auction {
         return bytes;
     }
 
-    public boolean contains(UserInfo user) {
-        return userList.contains(user);
+    public void addUser(SocketChannel userSocketChannel) {
+        userSocketChannelList.add(userSocketChannel);
+    }
+
+    public boolean contains(SocketChannel userSocketChannel) {
+        return userSocketChannelList.contains(userSocketChannel);
     }
 }

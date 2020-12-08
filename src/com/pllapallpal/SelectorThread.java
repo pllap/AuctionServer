@@ -117,9 +117,12 @@ public class SelectorThread implements Runnable {
                                     capacityBuffer.putInt(capacity);
                                     capacityBuffer.flip();
 
-                                    byte answer = Protocol.TRUE;
-                                    if (auction.contains(userMap.get(clientSocketChannel))) {
+                                    byte answer;
+                                    if (auction.contains(clientSocketChannel)) {
                                         answer = Protocol.FALSE;
+                                    } else {
+                                        answer = Protocol.TRUE;
+                                        auction.addUser(clientSocketChannel);
                                     }
 
                                     ByteBuffer byteBuffer = ByteBuffer.allocate(capacity);
@@ -127,7 +130,6 @@ public class SelectorThread implements Runnable {
                                     byteBuffer.put(answer);
                                     byteBuffer.putInt(auctionKey.getBytes().length);
                                     byteBuffer.put(auctionKey.getBytes());
-
                                     byteBuffer.flip();
 
                                     write(clientSocketChannel, capacityBuffer);
@@ -144,9 +146,6 @@ public class SelectorThread implements Runnable {
         }
     }
 
-    /**
-     * @return ByteBuffer which is read from socketChannel
-     */
     private ByteBuffer read(SelectionKey selectionKey) {
         SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
         ByteBuffer capacityBuffer = ByteBuffer.allocate(Integer.BYTES);
@@ -310,10 +309,7 @@ public class SelectorThread implements Runnable {
         return newAuction;
     }
 
-    /**
-     * @param byteBuffer Data that will be broadcast
-     */
-    private void broadcast(ByteBuffer byteBuffer) {
+    public void broadcast(ByteBuffer byteBuffer) {
         for (SocketChannel socketChannelBroadcast : socketChannelList) {
             try {
                 socketChannelBroadcast.write(byteBuffer);
@@ -329,11 +325,7 @@ public class SelectorThread implements Runnable {
         }
     }
 
-    /**
-     * @param socketChannel SocketChannel that data will be written
-     * @param byteBuffer    Buffer that will be sent to the SocketChannel
-     */
-    private void write(SocketChannel socketChannel, ByteBuffer byteBuffer) {
+    public void write(SocketChannel socketChannel, ByteBuffer byteBuffer) {
         try {
             socketChannel.write(byteBuffer);
         } catch (IOException e) {
