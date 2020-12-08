@@ -167,13 +167,33 @@ public class SelectorThread implements Runnable {
                                     }
                                 }
 
-                                if (Objects.isNull(auction)) {
-                                    break;
+                                if (Objects.nonNull(auction)) {
+                                    for (SocketChannel socketChannel : auction.getUserSocketChannelList()) {
+                                        synchronized (socketChannel) {
+                                            socketChannel.write(capacityBuffer);
+                                            socketChannel.write(byteBuffer);
+                                        }
+                                    }
                                 }
 
-                                for (SocketChannel socketChannel : auction.getUserSocketChannelList()) {
-                                    socketChannel.write(capacityBuffer);
-                                    socketChannel.write(byteBuffer);
+                                break;
+                            }
+                            case Protocol.AUCTION_QUIT: {
+                                int auctionKeyBytes = receivedByteBuffer.getInt();
+                                byte[] byteAuctionKey = new byte[auctionKeyBytes];
+                                receivedByteBuffer.get(byteAuctionKey, receivedByteBuffer.arrayOffset(), auctionKeyBytes);
+                                String auctionKey = new String(byteAuctionKey, StandardCharsets.UTF_8);
+
+                                Auction auction = null;
+                                for (Auction item : AuctionList.getInstance().getAuctionList()) {
+                                    if (auctionKey.equals(item.getKey())) {
+                                        auction = item;
+                                        break;
+                                    }
+                                }
+
+                                if (Objects.nonNull(auction)) {
+                                    auction.removeUser(clientSocketChannel);
                                 }
 
                                 break;

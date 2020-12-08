@@ -131,6 +131,10 @@ public class Auction {
         userSocketChannelList.add(userSocketChannel);
     }
 
+    public void removeUser(SocketChannel userSocketChannel) {
+        userSocketChannelList.remove(userSocketChannel);
+    }
+
     public boolean contains(SocketChannel userSocketChannel) {
         return userSocketChannelList.contains(userSocketChannel);
     }
