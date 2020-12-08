@@ -1,6 +1,9 @@
 package com.pllapallpal;
 
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
@@ -52,5 +55,30 @@ public class Auction {
 
     public String getKey() {
         return key;
+    }
+
+    public int getBytesNumber() throws IOException {
+
+        int bytes = 0;
+
+        byte[] byteKey = this.key.getBytes();
+        bytes = bytes + Integer.BYTES + byteKey.length;
+
+        byte[] byteCreatorName = this.creatorName.getBytes();
+        bytes = bytes + Integer.BYTES + byteCreatorName.length; // creator name length + item name data
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ImageIO.write(this.itemImage, "png", byteArrayOutputStream);
+        byteArrayOutputStream.flush();
+        byte[] byteItemImage = byteArrayOutputStream.toByteArray();
+        byteArrayOutputStream.close();
+        bytes = bytes + Integer.BYTES + byteItemImage.length; // image length + image bytes data
+
+        byte[] itemNameBytes = this.itemName.getBytes();
+        bytes = bytes + Integer.BYTES + itemNameBytes.length; // item name length + item name data
+
+        bytes = bytes + Integer.BYTES; // starting price
+
+        return bytes;
     }
 }

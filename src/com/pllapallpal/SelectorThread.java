@@ -88,13 +88,15 @@ public class SelectorThread implements Runnable {
                                 List<Auction> auctionList = AuctionList.getInstance().getAuctionList();
                                 Auction newAuction = makeNewAuction(receivedByteBuffer);
                                 auctionList.add(newAuction);
-
                                 ByteBuffer[] auctionListBuffers = auctionListToByteBuffer();
                                 ByteBuffer auctionListCapacityBuffer = auctionListBuffers[0];
                                 ByteBuffer auctionListBuffer = auctionListBuffers[1];
                                 broadcast(auctionListCapacityBuffer);
                                 broadcast(auctionListBuffer);
-
+                                break;
+                            }
+                            case Protocol.AUCTION_ENTER: {
+                                System.out.println("AUCTION_ENTER");
                                 break;
                             }
                         }
@@ -186,24 +188,7 @@ public class SelectorThread implements Runnable {
         int capacity = Integer.BYTES + Integer.BYTES; // protocol bytes length + auction list length bytes length
         try {
             for (Auction auction : auctionList) {
-
-                byte[] keyBytes = auction.getKey().getBytes();
-                capacity = capacity + Integer.BYTES + keyBytes.length;
-
-                byte[] creatorNameBytes = auction.getItemName().getBytes();
-                capacity = capacity + Integer.BYTES + creatorNameBytes.length; // creator name length + item name data
-
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                ImageIO.write(auction.getItemImage(), "png", byteArrayOutputStream);
-                byteArrayOutputStream.flush();
-                byte[] itemImageBytes = byteArrayOutputStream.toByteArray();
-                byteArrayOutputStream.close();
-                capacity = capacity + Integer.BYTES + itemImageBytes.length; // image length + image bytes data
-
-                byte[] itemNameBytes = auction.getItemName().getBytes();
-                capacity = capacity + Integer.BYTES + itemNameBytes.length; // item name length + item name data
-
-                capacity = capacity + Integer.BYTES; // starting price
+                capacity = capacity + auction.getBytesNumber();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -219,11 +204,13 @@ public class SelectorThread implements Runnable {
         try {
             for (Auction auction : auctionList) {
                 // key
-                byteBuffers[1].putInt(auction.getKey().getBytes().length);
-                byteBuffers[1].put(auction.getKey().getBytes());
+                byte[] byteKey = auction.getKey().getBytes();
+                byteBuffers[1].putInt(byteKey.length);
+                byteBuffers[1].put(byteKey);
                 // creatorName
-                byteBuffers[1].putInt(auction.getCreatorName().getBytes().length);
-                byteBuffers[1].put(auction.getCreatorName().getBytes());
+                byte[] byteCreatorName = auction.getCreatorName().getBytes();
+                byteBuffers[1].putInt(byteCreatorName.length);
+                byteBuffers[1].put(byteCreatorName);
                 // itemImage
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 ImageIO.write(auction.getItemImage(), "png", byteArrayOutputStream);
@@ -233,8 +220,9 @@ public class SelectorThread implements Runnable {
                 byteBuffers[1].put(byteImage);
                 byteArrayOutputStream.close();
                 // itemName
-                byteBuffers[1].putInt(auction.getItemName().getBytes().length);
-                byteBuffers[1].put(auction.getItemName().getBytes());
+                byte[] byteItemName = auction.getItemName().getBytes();
+                byteBuffers[1].putInt(byteItemName.length);
+                byteBuffers[1].put(byteItemName);
                 // startingPrice
                 byteBuffers[1].putInt(auction.getStartingPrice());
             }

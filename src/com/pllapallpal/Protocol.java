@@ -6,4 +6,6 @@ public class Protocol {
     public static final int LIST_AUCTION = 102;
     public static final int LIST_USER = 103;
     public static final int NEW_AUCTION = 200;
+    public static final int AUCTION_ENTER = 300;
+    public static final int AUCTION_MESSAGE = 301;
 }
