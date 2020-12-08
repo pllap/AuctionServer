@@ -34,15 +34,37 @@ public class Auction {
         new Random().nextBytes(array);
         key = new String(array, StandardCharsets.UTF_8);
         userSocketChannelList = Collections.synchronizedList(new ArrayList<>());
-        leftTime = 5;
+        leftTime = 60;
 
         Runnable timer = () -> {
-            if (leftTime > 0) {
+
+            if (leftTime > 1) {
                 --leftTime;
+
+                int capacity = Integer.BYTES + Integer.BYTES; // protocol + leftTime
+                ByteBuffer capacityBuffer = ByteBuffer.allocate(Integer.BYTES);
+                capacityBuffer.putInt(capacity);
+                capacityBuffer.flip();
+
+                ByteBuffer byteBuffer = ByteBuffer.allocate(capacity);
+                byteBuffer.putInt(Protocol.AUCTION_LEFT_TIME);
+                byteBuffer.putInt(leftTime);
+                byteBuffer.flip();
+
+                try {
+                    for (SocketChannel socketChannel : userSocketChannelList) {
+                        socketChannel.write(capacityBuffer);
+                        socketChannel.write(byteBuffer);
+
+                        capacityBuffer.rewind();
+                        byteBuffer.rewind();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
                 System.out.println("Left time for " + itemName + ": " + leftTime);
             } else {
-                //TODO: 접속 중인 유저들에게 다이얼로그 띄우고 밖으로 내보낸다
-                //TODO: 리스트에서 이 옥션을 제거한다
                 int capacity = Integer.BYTES; // protocol
                 ByteBuffer capacityBuffer = ByteBuffer.allocate(Integer.BYTES);
                 capacityBuffer.putInt(capacity);
@@ -56,11 +78,13 @@ public class Auction {
                     for (SocketChannel socketChannel : userSocketChannelList) {
                         socketChannel.write(capacityBuffer);
                         socketChannel.write(byteBuffer);
+
+                        capacityBuffer.rewind();
+                        byteBuffer.rewind();
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
 
                 AuctionList.getInstance().getAuctionList().remove(this);
                 stop();
