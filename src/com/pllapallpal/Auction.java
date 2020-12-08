@@ -24,6 +24,9 @@ public class Auction {
     private int startingPrice;
     private int leftTime;
 
+    ScheduledExecutorService executor;
+    public static Runnable onUpdateAuctionList;
+
     private List<SocketChannel> userSocketChannelList;
 
     public Auction() {
@@ -31,40 +34,45 @@ public class Auction {
         new Random().nextBytes(array);
         key = new String(array, StandardCharsets.UTF_8);
         userSocketChannelList = Collections.synchronizedList(new ArrayList<>());
-        leftTime = 30;
+        leftTime = 5;
 
-        // 타이머 재는 부분
-//        Runnable timer = () -> {
-//            if (leftTime > 0) {
-//                --leftTime;
-//                System.out.println("Left time for " + itemName + ": " + leftTime);
-//            } else {
-//                //TODO: 접속 중인 유저들에게 다이얼로그 띄우고 밖으로 내보낸다
-//                //TODO: 리스트에서 이 옥션을 제거한다
-//                int capacity = Integer.BYTES; // protocol
-//                ByteBuffer capacityBuffer = ByteBuffer.allocate(Integer.BYTES);
-//                capacityBuffer.putInt(capacity);
-//                capacityBuffer.flip();
-//
-//                ByteBuffer byteBuffer = ByteBuffer.allocate(capacity);
-//                byteBuffer.putInt(Protocol.AUCTION_QUIT);
-//                byteBuffer.flip();
-//
-//                try {
-//                    for (SocketChannel socketChannel : userSocketChannelList) {
-//                        socketChannel.write(capacityBuffer);
-//                        socketChannel.write(byteBuffer);
-//                    }
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//
-//                AuctionList.getInstance().getAuctionList().remove(this);
-        // awaitTermination() 쓰라고 함
-//            }
-//        };
-//        ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-//        executor.scheduleAtFixedRate(timer, 0, 1, TimeUnit.SECONDS);
+        Runnable timer = () -> {
+            if (leftTime > 0) {
+                --leftTime;
+                System.out.println("Left time for " + itemName + ": " + leftTime);
+            } else {
+                //TODO: 접속 중인 유저들에게 다이얼로그 띄우고 밖으로 내보낸다
+                //TODO: 리스트에서 이 옥션을 제거한다
+                int capacity = Integer.BYTES; // protocol
+                ByteBuffer capacityBuffer = ByteBuffer.allocate(Integer.BYTES);
+                capacityBuffer.putInt(capacity);
+                capacityBuffer.flip();
+
+                ByteBuffer byteBuffer = ByteBuffer.allocate(capacity);
+                byteBuffer.putInt(Protocol.AUCTION_QUIT);
+                byteBuffer.flip();
+
+                try {
+                    for (SocketChannel socketChannel : userSocketChannelList) {
+                        socketChannel.write(capacityBuffer);
+                        socketChannel.write(byteBuffer);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+
+                AuctionList.getInstance().getAuctionList().remove(this);
+                stop();
+            }
+        };
+        executor = Executors.newScheduledThreadPool(1);
+        executor.scheduleAtFixedRate(timer, 0, 1, TimeUnit.SECONDS);
+    }
+
+    private void stop() {
+        executor.shutdownNow();
+        onUpdateAuctionList.run();
     }
 
     public String getCreatorName() {
@@ -126,6 +134,10 @@ public class Auction {
         bytes = bytes + Integer.BYTES; // starting price
 
         return bytes;
+    }
+
+    public static void addOnUpdateAuctionList(Runnable onUpdateAuctionList) {
+        Auction.onUpdateAuctionList = onUpdateAuctionList;
     }
 
     public void addUser(SocketChannel userSocketChannel) {

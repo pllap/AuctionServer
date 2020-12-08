@@ -21,6 +21,10 @@ public class SelectorThread implements Runnable {
     private List<SocketChannel> socketChannelList;
     private final CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
 
+    public SelectorThread() {
+        Auction.addOnUpdateAuctionList(this::updateAuctionList);
+    }
+
     @Override
     public void run() {
         System.out.println("Server start");
@@ -409,5 +413,13 @@ public class SelectorThread implements Runnable {
 
     public void setSocketChannelList(List<SocketChannel> socketChannelList) {
         this.socketChannelList = socketChannelList;
+    }
+
+    public void updateAuctionList() {
+        ByteBuffer[] auctionListBuffers = auctionListToByteBuffer();
+        ByteBuffer auctionListCapacityBuffer = auctionListBuffers[0];
+        ByteBuffer auctionListBuffer = auctionListBuffers[1];
+        broadcast(auctionListCapacityBuffer);
+        broadcast(auctionListBuffer);
     }
 }
