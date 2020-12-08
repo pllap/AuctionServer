@@ -146,6 +146,9 @@ public class SelectorThread implements Runnable {
                                 byte[] byteMessage = new byte[messageBytes];
                                 receivedByteBuffer.get(byteMessage, receivedByteBuffer.arrayOffset(), messageBytes);
                                 String message = new String(byteMessage, StandardCharsets.UTF_8);
+                                message = userMap.get(clientSocketChannel).getUsername() + ": " + message;
+                                byteMessage = message.getBytes();
+                                messageBytes = byteMessage.length;
 
                                 int capacity = Integer.BYTES + // protocol
                                         Integer.BYTES + messageBytes;
@@ -169,10 +172,12 @@ public class SelectorThread implements Runnable {
 
                                 if (Objects.nonNull(auction)) {
                                     for (SocketChannel socketChannel : auction.getUserSocketChannelList()) {
-                                        synchronized (socketChannel) {
-                                            socketChannel.write(capacityBuffer);
-                                            socketChannel.write(byteBuffer);
-                                        }
+                                        System.out.println(UserInfoMap.getInstance().getUserMap().get(socketChannel).getUsername());
+                                        socketChannel.write(capacityBuffer);
+                                        socketChannel.write(byteBuffer);
+
+                                        capacityBuffer.rewind();
+                                        byteBuffer.rewind();
                                     }
                                 }
 

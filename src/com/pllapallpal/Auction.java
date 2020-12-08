@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Executors;
@@ -29,7 +30,7 @@ public class Auction {
         byte[] array = new byte[8];
         new Random().nextBytes(array);
         key = new String(array, StandardCharsets.UTF_8);
-        userSocketChannelList = new ArrayList<>();
+        userSocketChannelList = Collections.synchronizedList(new ArrayList<>());
         leftTime = 30;
 
         // 타이머 재는 부분
